@@ -30,6 +30,10 @@ export const shellTool: Tool = {
     const command: string = args.command;
     const timeout: number = args.timeout ?? DEFAULT_TIMEOUT;
 
+    if (!command || command.trim().length === 0) {
+      return 'Error: command must not be empty';
+    }
+
     return new Promise<string>((resolve) => {
       // Determine the correct shell for the platform.
       const isWindows = process.platform === 'win32';

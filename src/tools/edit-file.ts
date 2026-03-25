@@ -33,6 +33,14 @@ export const editFileTool: Tool = {
     const oldString: string = args.old_string;
     const newString: string = args.new_string;
 
+    if (!filePath) {
+      return 'Error: file_path is required';
+    }
+
+    if (!oldString) {
+      return 'Error: old_string must not be empty';
+    }
+
     try {
       const content = await fs.readFile(filePath, 'utf-8');
 

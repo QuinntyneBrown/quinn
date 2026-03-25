@@ -35,6 +35,10 @@ export const browserTool: Tool = {
     const action: string = args.action ?? 'content';
     const screenshotPath: string = args.screenshot_path ?? 'screenshot.png';
 
+    if (!url) {
+      return 'Error: url is required';
+    }
+
     // Try to dynamically import playwright.
     let playwright: any;
     try {
@@ -51,7 +55,7 @@ export const browserTool: Tool = {
 
       if (action === 'screenshot') {
         await page.screenshot({ path: screenshotPath, fullPage: true });
-        return `Screenshot saved to ${screenshotPath}`;
+        return `[Network request made to: ${url}]\nScreenshot saved to ${screenshotPath}`;
       }
 
       // Default: extract text content.
@@ -65,7 +69,7 @@ export const browserTool: Tool = {
           ? bodyText.substring(0, 50_000) + '\n... (truncated)'
           : bodyText;
 
-      return `Title: ${title}\n\n${trimmedBody}`;
+      return `[Network request made to: ${url}]\nTitle: ${title}\n\n${trimmedBody}`;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       return `Error using browser: ${message}`;

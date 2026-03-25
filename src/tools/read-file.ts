@@ -32,6 +32,10 @@ export const readFileTool: Tool = {
     const offset: number | undefined = args.offset;
     const limit: number | undefined = args.limit;
 
+    if (!filePath) {
+      return 'Error: file_path is required';
+    }
+
     try {
       const buffer = await fs.readFile(filePath);
 

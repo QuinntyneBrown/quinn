@@ -34,6 +34,7 @@ interface TagsResponse {
 
 export class OllamaClient {
   readonly baseUrl: string;
+  private modelsWithoutToolSupport = new Set<string>();
 
   constructor(baseUrl?: string) {
     this.baseUrl =
@@ -42,6 +43,10 @@ export class OllamaClient {
     if (this.baseUrl.endsWith('/')) {
       this.baseUrl = this.baseUrl.slice(0, -1);
     }
+  }
+
+  supportsTools(model: string): boolean {
+    return !this.modelsWithoutToolSupport.has(model);
   }
 
   // ── Model listing ────────────────────────────────────────────────────
@@ -64,11 +69,35 @@ export class OllamaClient {
   // ── Streaming chat ───────────────────────────────────────────────────
 
   async *chat(request: ChatRequest): AsyncGenerator<StreamToken> {
-    const res = await this.fetch(`${this.baseUrl}/api/chat`, {
+    // Strip tools for models that don't support them (detected on first attempt).
+    const sendRequest = { ...request, stream: true };
+    const model = request.model ?? '';
+    if (this.modelsWithoutToolSupport.has(model)) {
+      delete sendRequest.tools;
+    }
+
+    let res = await this.fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...request, stream: true }),
+      body: JSON.stringify(sendRequest),
     });
+
+    // If Ollama returns a JSON error (e.g. "does not support tools"),
+    // handle it gracefully: retry without tools.
+    if (!res.ok) {
+      const errorBody = await res.text();
+      if (errorBody.includes('does not support tools') && sendRequest.tools) {
+        this.modelsWithoutToolSupport.add(model);
+        delete sendRequest.tools;
+        res = await this.fetch(`${this.baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sendRequest),
+        });
+      } else {
+        throw new Error(`Ollama API error: ${errorBody}`);
+      }
+    }
 
     if (!res.body) {
       throw new Error(

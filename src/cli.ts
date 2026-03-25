@@ -7,7 +7,6 @@ import chalk from 'chalk';
 import { AgentLoop } from './agent/loop.js';
 import { OllamaClient } from './llm/ollama.js';
 import { ToolRegistry } from './tools/registry.js';
-import { buildSystemPrompt } from './llm/system-prompt.js';
 import * as renderer from './ui/renderer.js';
 
 export class CLI {
@@ -99,10 +98,7 @@ export class CLI {
         return 'exit';
 
       case '/clear': {
-        const systemPrompt = buildSystemPrompt(
-          this.registry.getToolDefinitions(),
-        );
-        this.agentLoop.conversation.clear(systemPrompt);
+        this.agentLoop.clearConversation();
         console.log(chalk.dim('Conversation cleared.'));
         break;
       }

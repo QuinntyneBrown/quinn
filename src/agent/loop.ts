@@ -62,12 +62,13 @@ export class AgentLoop {
       // Call the LLM and stream tokens.
       let fullText = '';
       let nativeToolCalls: ToolCall[] = [];
+      const useNativeTools = this.client.supportsTools(this._model);
 
       const stream = this.client.chat({
         model: this._model,
         messages: this.conversation.getMessages(),
         stream: true,
-        tools: this.registry.getToolDefinitions(),
+        tools: useNativeTools ? this.registry.getToolDefinitions() : undefined,
       });
 
       for await (const token of stream) {
@@ -81,7 +82,8 @@ export class AgentLoop {
       }
 
       // Determine tool calls — prefer native, fall back to text parsing.
-      let toolCalls: ToolCall[] = nativeToolCalls.length > 0
+      const usedNative = nativeToolCalls.length > 0;
+      const toolCalls: ToolCall[] = usedNative
         ? nativeToolCalls
         : parseToolCallsFromText(fullText);
 
@@ -95,8 +97,11 @@ export class AgentLoop {
 
       // Tool calls found — add assistant message, execute each tool,
       // add results, and loop.
-      this.conversation.addAssistant(fullText, toolCalls);
+      this.conversation.addAssistant(fullText, usedNative ? toolCalls : undefined);
       process.stdout.write('\n');
+
+      // Collect all tool results.
+      const resultParts: string[] = [];
 
       for (const tc of toolCalls) {
         const name = tc.function.name;
@@ -108,7 +113,19 @@ export class AgentLoop {
 
         console.log(renderer.renderToolResult(name, result));
 
-        this.conversation.addToolResult(tc.id, result);
+        if (usedNative) {
+          // Native tool support — send as tool-role messages.
+          this.conversation.addToolResult(tc.id, result);
+        } else {
+          // Fallback — collect results to send as a user message,
+          // since models without tool support don't understand tool-role messages.
+          resultParts.push(`[Tool result for ${name}]\n${result}`);
+        }
+      }
+
+      // For fallback mode, send all tool results as a single user message.
+      if (!usedNative && resultParts.length > 0) {
+        this.conversation.addUser(resultParts.join('\n\n'));
       }
     }
 

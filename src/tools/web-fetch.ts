@@ -23,6 +23,10 @@ export const webFetchTool: Tool = {
   async execute(args: Record<string, any>): Promise<string> {
     const url: string = args.url;
 
+    if (!url) {
+      return 'Error: url is required';
+    }
+
     try {
       const response = await fetch(url);
       let text = await response.text();

@@ -28,6 +28,10 @@ export const writeFileTool: Tool = {
     const filePath: string = args.file_path;
     const content: string = args.content ?? '';
 
+    if (!filePath) {
+      return 'Error: file_path is required';
+    }
+
     try {
       // Ensure parent directories exist.
       const dir = path.dirname(filePath);
