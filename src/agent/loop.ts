@@ -15,7 +15,7 @@ const MAX_ITERATIONS = 25;
 
 /** Default inference options — tuned for fast, deterministic code generation. */
 const DEFAULT_OPTIONS: OllamaOptions = {
-  num_ctx: 4096,
+  num_ctx: 32768,
   num_predict: 1024,
   temperature: 0.2,
   top_k: 15,
