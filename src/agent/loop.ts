@@ -16,10 +16,10 @@ const MAX_ITERATIONS = 25;
 /** Default inference options — tuned for fast, deterministic code generation. */
 const DEFAULT_OPTIONS: OllamaOptions = {
   num_ctx: 4096,
-  num_predict: 2048,
-  temperature: 0.3,
-  top_k: 40,
-  top_p: 0.85,
+  num_predict: 1024,
+  temperature: 0.2,
+  top_k: 15,
+  top_p: 0.6,
 };
 
 export class AgentLoop {
