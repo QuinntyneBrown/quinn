@@ -9,9 +9,18 @@ import { Conversation } from './conversation.js';
 import { parseToolCallsFromText } from '../llm/tool-call-parser.js';
 import { buildSystemPrompt } from '../llm/system-prompt.js';
 import * as renderer from '../ui/renderer.js';
-import type { ToolCall } from '../llm/types.js';
+import type { OllamaOptions, ToolCall } from '../llm/types.js';
 
 const MAX_ITERATIONS = 25;
+
+/** Default inference options — tuned for fast, deterministic code generation. */
+const DEFAULT_OPTIONS: OllamaOptions = {
+  num_ctx: 4096,
+  num_predict: 2048,
+  temperature: 0.3,
+  top_k: 40,
+  top_p: 0.85,
+};
 
 export class AgentLoop {
   public conversation: Conversation;
@@ -19,12 +28,14 @@ export class AgentLoop {
   private registry: ToolRegistry;
   private _model: string;
   private customPrompt?: string;
+  private inferenceOptions: OllamaOptions;
 
-  constructor(client: OllamaClient, registry: ToolRegistry, model: string, customPrompt?: string) {
+  constructor(client: OllamaClient, registry: ToolRegistry, model: string, customPrompt?: string, options?: OllamaOptions) {
     this.client = client;
     this.registry = registry;
     this._model = model;
     this.customPrompt = customPrompt;
+    this.inferenceOptions = { ...DEFAULT_OPTIONS, ...options };
 
     const systemPrompt = buildSystemPrompt(
       this.registry.getToolDefinitions(),
@@ -69,6 +80,7 @@ export class AgentLoop {
         messages: this.conversation.getMessages(),
         stream: true,
         tools: useNativeTools ? this.registry.getToolDefinitions() : undefined,
+        options: this.inferenceOptions,
       });
 
       for await (const token of stream) {

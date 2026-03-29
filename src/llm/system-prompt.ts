@@ -70,31 +70,28 @@ export function buildSystemPrompt(
 
 function formatToolEntry(tool: ToolDefinition): string {
   const fn = tool.function;
-  const paramBlock = formatParameters(fn.parameters);
-  return [`### ${fn.name}`, fn.description, paramBlock]
-    .filter(Boolean)
-    .join('\n');
+  const params = formatParametersCompact(fn.parameters);
+  return `- **${fn.name}**(${params}): ${fn.description}`;
 }
 
-function formatParameters(params: Record<string, unknown>): string {
+function formatParametersCompact(params: Record<string, unknown>): string {
   const properties = params['properties'] as
     | Record<string, Record<string, unknown>>
     | undefined;
 
   if (!properties || Object.keys(properties).length === 0) {
-    return 'Parameters: none';
+    return '';
   }
 
   const required = Array.isArray(params['required'])
     ? (params['required'] as string[])
     : [];
 
-  const lines = Object.entries(properties).map(([name, schema]) => {
-    const type = schema['type'] ?? 'any';
-    const desc = schema['description'] ?? '';
-    const req = required.includes(name) ? ' (required)' : '';
-    return `- \`${name}\` (${String(type)}${req}): ${String(desc)}`;
-  });
-
-  return `Parameters:\n${lines.join('\n')}`;
+  return Object.entries(properties)
+    .map(([name, schema]) => {
+      const type = schema['type'] ?? 'any';
+      const req = required.includes(name) ? '' : '?';
+      return `${name}${req}: ${String(type)}`;
+    })
+    .join(', ');
 }

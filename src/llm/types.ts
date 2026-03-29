@@ -44,12 +44,25 @@ export interface StreamToken {
   tool_calls?: ToolCall[];
 }
 
+/** Ollama inference options that tune generation speed and quality. */
+export interface OllamaOptions {
+  num_predict?: number;
+  num_ctx?: number;
+  temperature?: number;
+  top_k?: number;
+  top_p?: number;
+  repeat_penalty?: number;
+  num_thread?: number;
+  num_gpu?: number;
+}
+
 /** Request body for the Ollama `/api/chat` endpoint. */
 export interface ChatRequest {
   model: string;
   messages: ChatMessage[];
   stream: boolean;
   tools?: ToolDefinition[];
+  options?: OllamaOptions;
 }
 
 /** Non-streaming response from the Ollama `/api/chat` endpoint. */
