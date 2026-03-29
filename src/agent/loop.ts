@@ -85,7 +85,7 @@ export class AgentLoop {
         model: this._model,
         messages: this.conversation.getMessages(),
         stream: true,
-        tools: useNativeTools ? this.registry.getToolDefinitions() : undefined,
+        tools: useNativeTools ? this.registry.getCompactToolDefinitions() : undefined,
         options: this.inferenceOptions,
         keep_alive: '10m',
       });

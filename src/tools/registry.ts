@@ -39,6 +39,21 @@ export class ToolRegistry {
   }
 
   /**
+   * Return compact tool definitions (descriptions trimmed, parameter
+   * descriptions stripped) for native tool calling.
+   */
+  getCompactToolDefinitions(): ToolDefinition[] {
+    return this.list().map((tool) => ({
+      type: 'function' as const,
+      function: {
+        name: tool.name,
+        description: truncateDescription(tool.description),
+        parameters: stripParamDescriptions(tool.parameters),
+      },
+    }));
+  }
+
+  /**
    * Find a tool by name, execute it, and return the result string.
    * If the tool is not found or execution throws, an error string
    * is returned instead (never throws).
@@ -55,4 +70,23 @@ export class ToolRegistry {
       return `Error executing tool "${name}": ${message}`;
     }
   }
+}
+
+/** Strip description fields from parameter properties to reduce token count. */
+function stripParamDescriptions(params: Record<string, unknown>): Record<string, unknown> {
+  const props = params['properties'] as Record<string, Record<string, unknown>> | undefined;
+  if (!props) return params;
+
+  const stripped: Record<string, Record<string, unknown>> = {};
+  for (const [key, schema] of Object.entries(props)) {
+    const { description: _, ...rest } = schema;
+    stripped[key] = rest;
+  }
+  return { ...params, properties: stripped };
+}
+
+/** Keep only the first sentence of a tool description. */
+function truncateDescription(desc: string): string {
+  const dot = desc.indexOf('.');
+  return dot >= 0 ? desc.slice(0, dot + 1) : desc;
 }
