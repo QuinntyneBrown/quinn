@@ -7,56 +7,38 @@ import type { ToolDefinition } from './types.js';
 /**
  * Construct the full system prompt.
  *
- * @param tools         The tools the agent has access to.
- * @param customPrompt  Optional extra instructions appended at the end.
+ * @param tools              The tools the agent has access to.
+ * @param customPrompt       Optional extra instructions appended at the end.
+ * @param includeToolDetails When false, omit tool descriptions and fallback
+ *                           call format (use when tools are sent natively).
  */
 export function buildSystemPrompt(
   tools: ToolDefinition[],
   customPrompt?: string,
+  includeToolDetails = true,
 ): string {
   const sections: string[] = [];
 
-  // ── Identity ─────────────────────────────────────────────────────────
+  // ── Identity + Environment (compact) ─────────────────────────────────
   sections.push(
-    'You are Quinn, a local coding agent. You help users write code, answer questions, and perform tasks in their development environment.',
+    `You are Quinn, a coding agent. cwd: ${process.cwd()} | platform: ${process.platform}`,
   );
 
-  // ── Environment ──────────────────────────────────────────────────────
-  sections.push(
-    [
-      '## Environment',
-      `- Working directory: ${process.cwd()}`,
-      `- Platform: ${process.platform}`,
-      `- Date: ${new Date().toISOString().slice(0, 10)}`,
-    ].join('\n'),
-  );
+  if (includeToolDetails) {
+    // ── Available tools (only for fallback / non-native tool modes) ────
+    if (tools.length > 0) {
+      const toolLines = tools.map((t) => formatToolEntry(t));
+      sections.push(['Tools:', ...toolLines].join('\n'));
+    }
 
-  // ── Available tools ──────────────────────────────────────────────────
-  if (tools.length > 0) {
-    const toolLines = tools.map((t) => formatToolEntry(t));
-    sections.push(['## Available tools', '', ...toolLines].join('\n'));
+    // ── Fallback tool-calling format ───────────────────────────────────
+    sections.push(
+      'To call a tool: ```tool_call\n{"name":"tool_name","arguments":{"p":"v"}}\n```',
+    );
   }
 
-  // ── Fallback tool-calling format ─────────────────────────────────────
-  sections.push(
-    [
-      '## How to call tools',
-      '',
-      'When you need to use a tool, output a JSON code block:',
-      '',
-      '```tool_call',
-      '{"name": "tool_name", "arguments": {"param": "value"}}',
-      '```',
-      '',
-      'You can call multiple tools by outputting multiple such blocks.',
-      'Always wait for tool results before continuing.',
-    ].join('\n'),
-  );
-
-  // ── Safety ───────────────────────────────────────────────────────────
-  sections.push(
-    'IMPORTANT: If you need to make a network request (web_fetch or browser tools), inform the user first.',
-  );
+  // ── Safety (compact) ──────────────────────────────────────────────────
+  sections.push('Inform user before making network requests.');
 
   // ── Custom prompt ────────────────────────────────────────────────────
   if (customPrompt && customPrompt.trim().length > 0) {

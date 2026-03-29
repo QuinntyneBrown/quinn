@@ -63,6 +63,7 @@ export interface ChatRequest {
   stream: boolean;
   tools?: ToolDefinition[];
   options?: OllamaOptions;
+  keep_alive?: string;
 }
 
 /** Non-streaming response from the Ollama `/api/chat` endpoint. */

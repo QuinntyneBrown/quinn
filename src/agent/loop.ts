@@ -37,18 +37,24 @@ export class AgentLoop {
     this.customPrompt = customPrompt;
     this.inferenceOptions = { ...DEFAULT_OPTIONS, ...options };
 
+    // Start with a lean system prompt (no tool text) when native tools
+    // are expected.  The fallback path rebuilds with full tool details.
+    const useNative = this.client.supportsTools(this._model);
     const systemPrompt = buildSystemPrompt(
       this.registry.getToolDefinitions(),
       this.customPrompt,
+      !useNative,          // includeToolDetails only for fallback models
     );
     this.conversation = new Conversation(systemPrompt);
   }
 
   /** Rebuild the system prompt (preserving any custom prompt) and clear conversation. */
   clearConversation(): void {
+    const useNative = this.client.supportsTools(this._model);
     const systemPrompt = buildSystemPrompt(
       this.registry.getToolDefinitions(),
       this.customPrompt,
+      !useNative,
     );
     this.conversation.clear(systemPrompt);
   }
@@ -81,6 +87,7 @@ export class AgentLoop {
         stream: true,
         tools: useNativeTools ? this.registry.getToolDefinitions() : undefined,
         options: this.inferenceOptions,
+        keep_alive: '10m',
       });
 
       for await (const token of stream) {
@@ -91,6 +98,15 @@ export class AgentLoop {
         if (token.done && token.tool_calls) {
           nativeToolCalls = token.tool_calls;
         }
+      }
+
+      // If the model just lost native tool support (detected during chat),
+      // rebuild the system prompt with full tool details for future iterations.
+      if (useNativeTools && !this.client.supportsTools(this._model)) {
+        this.conversation.clear(
+          buildSystemPrompt(this.registry.getToolDefinitions(), this.customPrompt, true),
+        );
+        this.conversation.addUser(userMessage);
       }
 
       // Determine tool calls — prefer native, fall back to text parsing.
